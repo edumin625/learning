@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영단어 학습 앱</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Styles for better card/button aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .flashcard {
+            min-height: 400px; /* 플래시 카드 높이 유지 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flashcard.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 40px; /* 상단 여백 추가 */
+            padding-bottom: 40px; /* 하단 여백 추가 */
+            box-sizing: border-box; /* 패딩이 전체 크기에 포함되도록 설정 */
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .card-front {
+            background-color: #ffffff;
+            color: #1f2937;
+            font-size: 3rem;
+            font-weight: 700;
+        }
+        .card-back {
+            background-color: #4f46e5;
+            color: #ffffff;
+            transform: rotateY(180deg);
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        .quiz-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .correct {
+            background-color: #10b981 !important; /* Tailwind green-500 */
+            color: white !important;
+            border-color: #059669 !important;
+            pointer-events: none;
+        }
+        .incorrect {
+            background-color: #ef4444 !important; /* Tailwind red-500 */
+            color: white !important;
+            border-color: #dc2626 !important;
+            pointer-events: none;
+        }
+        /* New styles for Word Game 1 */
+        .scrambled-word {
+            letter-spacing: 0.5rem;
+        }
+        /* New styles for Word Game 2 (Canvas) */
+        #gameCanvas {
+            border: 4px solid #4f46e5; /* Indigo border */
+            background-color: #1f2937; /* Dark background */
+            border-radius: 1rem;
+            display: block;
+            margin: 0 auto;
+            touch-action: none; /* Disable default touch actions */
+        }
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl">
+        <h1 class="text-4xl font-extrabold text-indigo-700 mb-6 text-center">영단어 학습 마스터</h1>
+
+        <!-- Mode Selection -->
+        <div class="flex justify-center space-x-3 mb-8 flex-wrap gap-y-3">
+            <button id="flashcardModeBtn" onclick="setMode('flashcard')" class="px-4 py-2 font-semibold rounded-lg transition duration-150 ease-in-out bg-gray-200 text-gray-800 hover:bg-gray-300 shadow-md text-sm md:text-base">
+                플래시 카드 학습
+            </button>
+            <button id="quizModeBtn" onclick="setMode('quiz')" class="px-4 py-2 font-semibold rounded-lg transition duration-150 ease-in-out bg-gray-200 text-gray-800 hover:bg-gray-300 shadow-md text-sm md:text-base">
+                퀴즈 풀이
+            </button>
+            <button id="wordgameModeBtn" onclick="setMode('wordgame')" class="px-4 py-2 font-semibold rounded-lg transition duration-150 ease-in-out bg-gray-200 text-gray-800 hover:bg-gray-300 shadow-md text-sm md:text-base">
+                영단어 게임
+            </button>
+            <button id="wordgame2ModeBtn" onclick="setMode('wordgame2')" class="px-4 py-2 font-semibold rounded-lg transition duration-150 ease-in-out bg-gray-200 text-gray-800 hover:bg-gray-300 shadow-md text-sm md:text-base">
+                영단어 게임2 (낙하)
+            </button>
+        </div>
+
+        <!-- Word Status and Control -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-3 sm:space-y-0">
+            <div id="wordStatus" class="text-lg font-medium text-gray-700"></div>
+            <div class="flex space-x-3">
+                <select id="categoryFilter" onchange="resetApp()" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="all">전체 단어</option>
+                </select>
+                <button onclick="resetApp()" class="px-4 py-2 bg-pink-500 text-white font-semibold rounded-lg shadow-md hover:bg-pink-600 transition duration-150 ease-in-out">
+                    재시작
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area (Flashcard / Quiz / Word Game) -->
+        <div id="appContainer">
+            <!-- Content will be rendered here by JavaScript -->
+        </div>
+
+        <!-- Navigation Buttons (Flashcard only) -->
+        <div id="navControls" class="flex justify-center space-x-4 mt-8 hidden">
+            <button onclick="prevWord()" class="px-6 py-3 text-lg font-bold rounded-full bg-gray-700 text-white hover:bg-gray-800 transition duration-150 ease-in-out shadow-lg">
+                <span class="text-2xl">&larr;</span> 이전
+            </button>
+            <button onclick="nextWord()" class="px-6 py-3 text-lg font-bold rounded-full bg-indigo-700 text-white hover:bg-indigo-800 transition duration-150 ease-in-out shadow-lg">
+                다음 <span class="text-2xl">&rarr;</span>
+            </button>
+        </div>
+
+        <!-- Quiz Result Modal (Custom alert replacement) -->
+        <div id="resultModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
+            <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full text-center">
+                <h3 id="modalTitle" class="text-2xl font-bold mb-4 text-indigo-700"></h3>
+                <p id="modalMessage" class="mb-6 text-gray-700"></p>
+                <button id="modalContinueBtn" onclick="handleModalContinue()" class="px-6 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600">
+                    계속하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 영단어 데이터: 100개 단어 목록
+        const ALL_WORD_DATA = [
+            { id: 1, english: 'happy', korean: '행복한', category: '감정' },
+            { id: 2, english: 'delighted', korean: '기쁜', category: '감정' },
+            { id: 3, english: 'satisfied', korean: '만족한', category: '감정' },
+            { id: 4, english: 'amazed', korean: '놀라운', category: '감정' },
+            { id: 5, english: 'proud', korean: '자랑스러운', category: '감정' },
+            { id: 6, english: 'confident', korean: '자신있는', category: '감정' },
+            { id: 7, english: 'healthy', korean: '건강한', category: '감정' },
+            { id: 8, english: 'sick', korean: '아픈', category: '감정' },
+            { id: 9, english: 'interested', korean: '흥미로운', category: '감정' },
+            { id: 10, english: 'excited', korean: '흥분한', category: '감정' },
+            { id: 11, english: 'jealous', korean: '질투하는', category: '감정' },
+            { id: 12, english: 'annoyed', korean: '짜증나는', category: '감정' },
+            { id: 13, english: 'angry', korean: '화난', category: '감정' },
+            { id: 14, english: 'worried', korean: '걱정하는', category: '감정' },
+            { id: 15, english: 'embarrassing', korean: '난처한', category: '감정' },
+            { id: 16, english: 'lonely', korean: '외로운', category: '감정' },
+            { id: 17, english: 'afraid', korean: '무서운', category: '감정' },
+            { id: 18, english: 'scared', korean: '겁나는', category: '감정' },
+            { id: 19, english: 'disappointed', korean: '실망한', category: '감정' },
+            { id: 20, english: 'hungry', korean: '배고픈', category: '상태' },
+            { id: 21, english: 'sleepy', korean: '졸린', category: '상태' },
+            { id: 22, english: 'thirsty', korean: '목마른', category: '상태' },
+            { id: 23, english: 'full', korean: '배부른', category: '상태' },
+            { id: 24, english: 'tired', korean: '피곤한', category: '상태' },
+            { id: 25, english: 'exhausted', korean: '지친', category: '상태' },
+            { id: 26, english: 'honest', korean: '정직한', category: '성격' },
+            { id: 27, english: 'cautious', korean: '신중한', category: '성격' },
+            { id: 28, english: 'positive', korean: '긍정적인', category: '성격' },
+            { id: 29, english: 'negative', korean: '부정적인', category: '성격' },
+            { id: 30, english: 'serious', korean: '진지한', category: '성격' },
+            { id: 31, english: 'fun', korean: '즐거운', category: '성격' },
+            { id: 32, english: 'funny', korean: '웃긴', category: '성격' },
+            { id: 33, english: 'quiet', korean: '조용한', category: '성격' },
+            { id: 34, english: 'shy', korean: '수줍은', category: '성격' },
+            { id: 35, english: 'introverted', korean: '내향적인', category: '성격' },
+            { id: 36, english: 'extroverted', korean: '외향적인', category: '성격' },
+            { id: 37, english: 'humorous', korean: '유머러스한', category: '성격' },
+            { id: 38, english: 'brave', korean: '용감한', category: '성격' },
+            { id: 39, english: 'cruel', korean: '잔인한', category: '성격' },
+            { id: 40, english: 'furious', korean: '몹시 화난', category: '성격' },
+            { id: 41, english: 'diligent', korean: '부지런한', category: '성격' },
+            { id: 42, english: 'lazy', korean: '게으른', category: '성격' },
+            { id: 43, english: 'polite', korean: '예의바른', category: '성격' },
+            { id: 44, english: 'rude', korean: '무례한', category: '성격' },
+            { id: 45, english: 'kind', korean: '친절한', category: '성격' },
+            { id: 46, english: 'smart', korean: '똑똑한', category: '성격' },
+            { id: 47, english: 'clever', korean: '영리한', category: '성격' },
+            { id: 48, english: 'wise', korean: '현명한', category: '성격' },
+            { id: 49, english: 'strong', korean: '강한', category: '특성' },
+            { id: 50, english: 'weak', korean: '약한', category: '특성' },
+            { id: 51, english: 'fast', korean: '빠른', category: '특성' },
+            { id: 52, english: 'slow', korean: '느린', category: '특성' },
+            { id: 53, english: 'big', korean: '큰', category: '특성' },
+            { id: 54, english: 'small', korean: '작은', category: '특성' },
+            { id: 55, english: 'tall', korean: '키가 큰', category: '특성' },
+            { id: 56, english: 'short', korean: '키가 작은/짧은', category: '특성' },
+            { id: 57, english: 'long', korean: '긴', category: '특성' },
+            { id: 58, english: 'new', korean: '새로운', category: '특성' },
+            { id: 59, english: 'old', korean: '낡은/나이든', category: '특성' },
+            { id: 60, english: 'young', korean: '젊은', category: '특성' },
+            { id: 61, english: 'beautiful', korean: '아름다운', category: '특성' },
+            { id: 62, english: 'ugly', korean: '못생긴', category: '특성' },
+            { id: 63, english: 'pretty', korean: '예쁜', category: '특성' },
+            { id: 64, english: 'handsome', korean: '잘생긴', category: '특성' },
+            { id: 65, english: 'delicious', korean: '맛있는', category: '특성' },
+            { id: 66, english: 'tasty', korean: '풍미있는', category: '특성' },
+            { id: 67, english: 'sweet', korean: '달콤한', category: '특성' },
+            { id: 68, english: 'sour', korean: '신', category: '특성' },
+            { id: 69, english: 'bitter', korean: '쓴', category: '특성' },
+            { id: 70, english: 'salty', korean: '짠', category: '특성' },
+            { id: 71, english: 'warm', korean: '따뜻한', category: '날씨/온도' },
+            { id: 72, english: 'hot', korean: '뜨거운/더운', category: '날씨/온도' },
+            { id: 73, english: 'cool', korean: '시원한', category: '날씨/온도' },
+            { id: 74, english: 'cold', korean: '추운/차가운', category: '날씨/온도' },
+            { id: 75, english: 'sunny', korean: '화창한', category: '날씨/온도' },
+            { id: 76, english: 'cloudy', korean: '흐린', category: '날씨/온도' },
+            { id: 77, english: 'rainy', korean: '비오는', category: '날씨/온도' },
+            { id: 78, english: 'snowy', korean: '눈오는', category: '날씨/온도' },
+            { id: 79, english: 'windy', korean: '바람부는', category: '날씨/온도' },
+            { id: 80, english: 'comfortable', korean: '편안한', category: '상태' },
+            { id: 81, english: 'convenient', korean: '편리한', category: '상태' },
+            { id: 82, english: 'safe', korean: '안전한', category: '상태' },
+            { id: 83, english: 'dangerous', korean: '위험한', category: '상태' },
+            { id: 84, english: 'difficult', korean: '어려운', category: '상태' },
+            { id: 85, english: 'easy', korean: '쉬운', category: '상태' },
+            { id: 86, english: 'important', korean: '중요한', category: '상태' },
+            { id: 87, english: 'necessary', korean: '필요한', category: '상태' },
+            { id: 88, english: 'possible', korean: '가능한', category: '상태' },
+            { id: 89, english: 'impossible', korean: '불가능한', category: '상태' },
+            { id: 90, english: 'clear', korean: '맑은/분명한', category: '상태' },
+            { id: 91, english: 'dark', korean: '어두운', category: '상태' },
+            { id: 92, english: 'bright', korean: '밝은', category: '상태' },
+            { id: 93, english: 'clean', korean: '깨끗한', category: '상태' },
+            { id: 94, english: 'dirty', korean: '더러운', category: '상태' },
+            { id: 95, english: 'expensive', korean: '비싼', category: '가격' },
+            { id: 96, english: 'cheap', korean: '싼', category: '가격' },
+            { id: 97, english: 'common', korean: '흔한', category: '일반' },
+            { id: 98, english: 'special', korean: '특별한', category: '일반' },
+            { id: 99, english: 'whole', korean: '전체의', category: '일반' },
+            { id: 100, english: 'various', korean: '다양한', category: '일반' },
+        ];
+
+        let words = []; // 현재 학습/퀴즈에 사용되는 단어 목록
+        let currentWordIndex = 0;
+        let currentMode = 'flashcard'; // 'flashcard', 'quiz', 'wordgame', or 'wordgame2'
+        let quizScore = 0;
+        let quizTotal = 0;
+
+        // Word Game 1 State
+        let gameScore = 0;
+        let gameTotal = 0;
+        let currentGameWord = null;
+        let hintCount = 0;
+
+        // Word Game 2 State
+        const GAME_WIDTH = 600;
+        const GAME_HEIGHT = 400;
+        let canvas, ctx;
+        let fallingWords = []; // Array of { word, english, korean, x, y, speed, scoreAwarded }
+        let gameLoopId;
+        let isGameRunning = false;
+        let gameScore2 = 0;
+        let wordsMissed = 0;
+        let wordsTyped = 0;
+        let lastSpawnTime = 0;
+        const SPAWN_INTERVAL_MS = 1500; // 단어 생성 간격 (1.5초)
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeCategories();
+            setMode('flashcard');
+        });
+
+        // 카테고리 드롭다운 초기화
+        function initializeCategories() {
+            const categories = [...new Set(ALL_WORD_DATA.map(word => word.category))];
+            const filterSelect = document.getElementById('categoryFilter');
+
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                filterSelect.appendChild(option);
+            });
+        }
+
+        // 앱 상태를 초기화하고 모드에 따라 렌더링
+        function resetApp() {
+            // 게임 루프 정지 (Word Game 2)
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                isGameRunning = false;
+            }
+            
+            const filterValue = document.getElementById('categoryFilter').value;
+            words = filterValue === 'all'
+                ? [...ALL_WORD_DATA]
+                : ALL_WORD_DATA.filter(word => word.category === filterValue);
+
+            // 단어 순서 랜덤화
+            words.sort(() => Math.random() - 0.5);
+
+            currentWordIndex = 0;
+            quizScore = 0;
+            quizTotal = 0;
+            gameScore = 0;
+            gameTotal = 0;
+            hintCount = 0;
+            currentGameWord = null;
+            
+            // Game 2 Reset
+            gameScore2 = 0;
+            wordsMissed = 0;
+            wordsTyped = 0;
+            fallingWords = [];
+
+            if (currentMode === 'flashcard') {
+                renderFlashcard();
+            } else if (currentMode === 'quiz') {
+                renderQuiz();
+            } else if (currentMode === 'wordgame') {
+                nextGameWord();
+            } else if (currentMode === 'wordgame2') {
+                renderWordGame2();
+            }
+            updateModeButtons();
+        }
+
+        // 모드 설정 및 앱 재시작
+        function setMode(mode) {
+            currentMode = mode;
+            // Word Game 2에서 Canvas가 계속 그려지는 것을 방지
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                isGameRunning = false;
+            }
+
+            document.getElementById('navControls').classList.toggle('hidden', mode !== 'flashcard');
+            resetApp();
+        }
+
+        // 모드 버튼 스타일 업데이트
+        function updateModeButtons() {
+            const modes = ['flashcard', 'quiz', 'wordgame', 'wordgame2'];
+            modes.forEach(mode => {
+                const btn = document.getElementById(`${mode}ModeBtn`);
+                if (mode === currentMode) {
+                    btn.classList.replace('bg-gray-200', 'bg-indigo-500');
+                    btn.classList.replace('text-gray-800', 'text-white');
+                } else {
+                    btn.classList.replace('bg-indigo-500', 'bg-gray-200');
+                    btn.classList.replace('text-white', 'text-gray-800');
+                }
+            });
+        }
+
+        // 상태 표시 업데이트
+        function updateStatus() {
+            const statusElement = document.getElementById('wordStatus');
+            const totalWords = words.length;
+
+            if (currentMode === 'flashcard') {
+                statusElement.textContent = `단어 ${currentWordIndex + 1} / ${totalWords} (${words[currentWordIndex]?.category || ''})`;
+            } else if (currentMode === 'quiz') {
+                statusElement.textContent = `점수: ${quizScore} / ${quizTotal} (남은 문제: ${totalWords - quizTotal})`;
+            } else if (currentMode === 'wordgame') {
+                statusElement.textContent = `점수: ${gameScore} / ${gameTotal} | 남은 문제: ${totalWords - gameTotal} | 힌트 사용: ${hintCount}회`;
+            } else if (currentMode === 'wordgame2') {
+                 statusElement.innerHTML = `
+                    <span class="text-xl font-bold text-indigo-700">점수: ${gameScore2}</span> 
+                    | 맞힘: <span class="text-green-600">${wordsTyped}</span> 
+                    | 놓침: <span class="text-red-600">${wordsMissed}</span>
+                    | 총 단어: ${words.length}개
+                `;
+            }
+        }
+
+        // --- Flashcard Mode Functions ---
+
+        // 플래시 카드 렌더링
+        function renderFlashcard() {
+            if (words.length === 0) {
+                document.getElementById('appContainer').innerHTML = '<p class="text-center text-xl text-gray-500 mt-10">선택된 카테고리에 단어가 없습니다.</p>';
+                document.getElementById('navControls').classList.add('hidden');
+                document.getElementById('wordStatus').textContent = '';
+                return;
+            }
+
+            const currentWord = words[currentWordIndex];
+            const appContainer = document.getElementById('appContainer');
+
+            appContainer.innerHTML = `
+                <div id="flashcard" class="flashcard w-full max-w-lg mx-auto" onclick="flipCard(this)">
+                    <div class="card-inner">
+                        <div class="card-front">
+                            ${currentWord.english}
+                        </div>
+                        <div class="card-back">
+                            ${currentWord.korean}
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center text-sm text-gray-500 mt-4">클릭하여 뜻 확인</p>
+            `;
+            updateStatus();
+        }
+
+        // 카드 뒤집기
+        function flipCard(cardElement) {
+            cardElement.classList.toggle('flipped');
+        }
+
+        // 다음 단어
+        function nextWord() {
+            currentWordIndex = (currentWordIndex + 1) % words.length;
+            renderFlashcard();
+        }
+
+        // 이전 단어
+        function prevWord() {
+            currentWordIndex = (currentWordIndex - 1 + words.length) % words.length;
+            renderFlashcard();
+        }
+
+        // --- Quiz Mode Functions (Simplified) ---
+        
+        // 퀴즈 문제 렌더링
+        function renderQuiz() {
+            // ... (Quiz rendering logic) ...
+            if (words.length === 0) {
+                document.getElementById('appContainer').innerHTML = '<p class="text-center text-xl text-gray-500 mt-10">선택된 카테고리에 단어가 없습니다.</p>';
+                document.getElementById('navControls').classList.add('hidden');
+                document.getElementById('wordStatus').textContent = '';
+                return;
+            }
+            
+            if (quizTotal >= words.length) {
+                showQuizResult();
+                return;
+            }
+
+            const currentQuestion = words[quizTotal]; // 현재 퀴즈 단어
+            const correctAnswer = currentQuestion.english;
+
+            // 오답 3개 무작위 선택 (현재 단어 제외)
+            const incorrectOptions = ALL_WORD_DATA
+                .filter(w => w.english !== correctAnswer)
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 3)
+                .map(w => w.english);
+
+            const options = [...incorrectOptions, correctAnswer].sort(() => Math.random() - 0.5);
+
+            const appContainer = document.getElementById('appContainer');
+            appContainer.innerHTML = `
+                <div class="text-center mb-8">
+                    <p class="text-2xl text-gray-600 mb-2">다음 우리말의 뜻에 맞는 영단어는?</p>
+                    <div class="text-5xl font-bold text-indigo-700 p-6 bg-indigo-50 rounded-xl shadow-lg inline-block">
+                        ${currentQuestion.korean}
+                    </div>
+                </div>
+
+                <div id="quizOptions" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto">
+                    ${options.map((option, index) => `
+                        <button class="quiz-option bg-white text-gray-800 text-xl font-semibold py-4 px-6 rounded-lg border-2 border-indigo-300 shadow-md transition transform duration-150 ease-in-out"
+                                onclick="checkAnswer(this, '${option}', '${correctAnswer}')"
+                                data-option="${option}">
+                            ${option}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            updateStatus();
+        }
+
+        // 정답 확인
+        function checkAnswer(selectedElement, selectedAnswer, correctAnswer) {
+            // ... (Quiz answer checking logic) ...
+            const optionsContainer = document.getElementById('quizOptions');
+            const allOptions = optionsContainer.querySelectorAll('.quiz-option');
+
+            // 모든 버튼 비활성화
+            allOptions.forEach(btn => btn.disabled = true);
+
+            quizTotal++; // 정답 확인 시도 횟수 증가
+
+            let nextAction;
+            let title;
+            let message;
+
+            if (selectedAnswer === correctAnswer) {
+                quizScore++;
+                selectedElement.classList.add('correct');
+                title = '정답!';
+                message = `축하합니다! '${correctAnswer}'가 맞습니다.`;
+            } else {
+                selectedElement.classList.add('incorrect');
+                // 정답 표시
+                allOptions.forEach(btn => {
+                    if (btn.dataset.option === correctAnswer) {
+                        btn.classList.add('correct');
+                    }
+                });
+                title = '오답!';
+                message = `아쉽네요. 정답은 '${correctAnswer}'였습니다.`;
+            }
+            
+            // 다음 행동 결정: 퀴즈가 끝났는지 확인
+            if (quizTotal >= words.length) {
+                // 모든 문제를 다 풀었으면 최종 결과 표시
+                nextAction = showQuizResult; 
+            } else {
+                // 다음 문제로 이동
+                nextAction = renderQuiz;
+            }
+            
+            updateStatus();
+            // 모달 표시 시 콜백 대신 다음 액션을 실행할 함수를 저장
+            showModal(title, message, nextAction); 
+        }
+
+        // 퀴즈 최종 결과 표시
+        function showQuizResult() {
+            // ... (Quiz result logic) ...
+            const appContainer = document.getElementById('appContainer');
+            const percentage = words.length > 0 ? ((quizScore / words.length) * 100).toFixed(1) : 0;
+
+            document.getElementById('resultModal').classList.add('hidden'); 
+
+            appContainer.innerHTML = `
+                <div class="text-center mt-10 p-8 bg-green-50 rounded-xl border-4 border-green-300 shadow-lg">
+                    <h2 class="text-3xl font-bold text-green-700 mb-4">🎉 퀴즈 완료! 🎉</h2>
+                    <p class="text-2xl text-gray-700 mb-2">총 문제 수: ${words.length}개</p>
+                    <p class="text-2xl text-gray-700 mb-6">맞힌 개수: ${quizScore}개</p>
+                    <p class="text-4xl font-extrabold text-green-600">점수: ${percentage}%</p>
+                    <button onclick="resetApp()" class="mt-8 px-6 py-3 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 shadow-md">
+                        다시 시작하기
+                    </button>
+                </div>
+            `;
+            document.getElementById('wordStatus').textContent = `최종 점수: ${quizScore} / ${words.length}`;
+        }
+
+
+        // --- Word Game 1 Mode Functions (Simplified) ---
+
+        // 단어를 섞는 함수
+        function scrambleWord(word) {
+            let parts = word.split('');
+            for (let i = parts.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [parts[i], parts[j]] = [parts[j], parts[i]];
+            }
+            return parts.join('');
+        }
+        
+        // 다음 게임 단어로 이동
+        function nextGameWord() {
+            if (gameTotal >= words.length) {
+                showGameResult();
+                return;
+            }
+
+            currentGameWord = words[gameTotal];
+            renderWordGame();
+        }
+
+        // 영단어 게임 1 렌더링
+        function renderWordGame() {
+            if (!currentGameWord) return;
+
+            const appContainer = document.getElementById('appContainer');
+            const scrambled = scrambleWord(currentGameWord.english);
+            
+            appContainer.innerHTML = `
+                <div class="max-w-md mx-auto space-y-6">
+                    <div class="text-center">
+                        <p class="text-2xl text-gray-600 mb-2">주어진 단어의 뜻:</p>
+                        <div class="text-4xl font-bold text-indigo-700 p-4 bg-indigo-50 rounded-xl shadow-lg">
+                            ${currentGameWord.korean}
+                        </div>
+                    </div>
+
+                    <div class="text-center p-4 bg-yellow-100 rounded-xl shadow-inner">
+                        <p class="text-xl text-gray-700 mb-2">섞인 알파벳:</p>
+                        <div id="scrambledDisplay" class="scrambled-word text-6xl font-extrabold text-gray-800">
+                            ${scrambled.toUpperCase()}
+                        </div>
+                    </div>
+                    
+                    <div id="hintDisplay" class="text-center text-xl font-medium text-red-500 min-h-[1.5rem]"></div>
+
+                    <div class="flex space-x-2">
+                        <input type="text" id="wordInput" class="flex-grow p-4 text-2xl border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-indigo-500 uppercase font-semibold text-center shadow-md" placeholder="여기에 정답을 입력하세요" maxlength="${currentGameWord.english.length}" onkeyup="if(event.key==='Enter') submitGameAnswer()">
+                        <button onclick="submitGameAnswer()" class="px-6 py-4 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition shadow-md">
+                            제출
+                        </button>
+                    </div>
+
+                    <div class="flex justify-center space-x-4">
+                        <button onclick="provideHint()" class="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition shadow-md">
+                            힌트 보기 (첫 글자)
+                        </button>
+                        <button onclick="skipGameWord()" class="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition shadow-md">
+                            건너뛰기
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('wordInput').focus();
+            updateStatus();
+        }
+
+        // 힌트 제공
+        function provideHint() {
+            // ... (Game 1 hint logic) ...
+            if (currentGameWord.hintUsed) return;
+
+            const hint = currentGameWord.english.toUpperCase().charAt(0);
+            document.getElementById('hintDisplay').textContent = `힌트: 첫 글자는 '${hint}'입니다.`;
+            currentGameWord.hintUsed = true;
+            hintCount++;
+            updateStatus();
+        }
+        
+        // 정답 제출
+        function submitGameAnswer() {
+            // ... (Game 1 submit logic) ...
+            const inputElement = document.getElementById('wordInput');
+            const submittedAnswer = inputElement.value.toLowerCase().trim();
+            const correctAnswer = currentGameWord.english.toLowerCase();
+
+            gameTotal++;
+
+            let nextAction;
+            let title;
+            let message;
+
+            if (submittedAnswer === correctAnswer) {
+                gameScore++;
+                title = '정답입니다!';
+                message = `성공! '${correctAnswer.toUpperCase()}'가 맞습니다.`;
+            } else {
+                title = '오답입니다.';
+                message = `틀렸습니다. 정답은 '${correctAnswer.toUpperCase()}'였습니다.`;
+            }
+
+            if (gameTotal >= words.length) {
+                nextAction = showGameResult; 
+            } else {
+                nextAction = nextGameWord;
+            }
+            
+            updateStatus();
+            showModal(title, message, nextAction); 
+        }
+
+        // 건너뛰기
+        function skipGameWord() {
+            // ... (Game 1 skip logic) ...
+            gameTotal++; // 건너뛰기도 횟수에 포함
+            const nextAction = gameTotal >= words.length ? showGameResult : nextGameWord;
+            const correctAnswer = currentGameWord.english.toUpperCase();
+            
+            showModal('건너뛰기', `정답은 '${correctAnswer}'였습니다. 다음 문제로 넘어갑니다.`, nextAction);
+        }
+
+        // 게임 1 최종 결과 표시
+        function showGameResult() {
+            // ... (Game 1 result logic) ...
+            const appContainer = document.getElementById('appContainer');
+            const total = words.length;
+            const percentage = total > 0 ? ((gameScore / total) * 100).toFixed(1) : 0;
+
+            document.getElementById('resultModal').classList.add('hidden'); 
+
+            appContainer.innerHTML = `
+                <div class="text-center mt-10 p-8 bg-blue-50 rounded-xl border-4 border-blue-300 shadow-lg">
+                    <h2 class="text-3xl font-bold text-blue-700 mb-4">🎮 게임 종료! 🎮</h2>
+                    <p class="text-2xl text-gray-700 mb-2">총 문제 수: ${total}개</p>
+                    <p class="text-2xl text-gray-700 mb-2">맞힌 개수: ${gameScore}개</p>
+                    <p class="text-xl text-gray-600 mb-6">힌트 사용 횟수: ${hintCount}회</p>
+                    <p class="text-4xl font-extrabold text-blue-600">점수: ${percentage}%</p>
+                    <button onclick="resetApp()" class="mt-8 px-6 py-3 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 shadow-md">
+                        다시 시작하기
+                    </button>
+                </div>
+            `;
+            document.getElementById('wordStatus').textContent = `최종 점수: ${gameScore} / ${words.length}`;
+        }
+
+
+        // --- Word Game 2 Mode Functions (Falling Words) ---
+
+        // 영단어 게임 2 렌더링 (Canvas 설정)
+        function renderWordGame2() {
+            if (words.length === 0) {
+                document.getElementById('appContainer').innerHTML = '<p class="text-center text-xl text-gray-500 mt-10">선택된 카테고리에 단어가 없습니다.</p>';
+                document.getElementById('wordStatus').textContent = '';
+                return;
+            }
+
+            const appContainer = document.getElementById('appContainer');
+            appContainer.innerHTML = `
+                <div class="game-area max-w-xl mx-auto space-y-4">
+                    <canvas id="gameCanvas" width="${GAME_WIDTH}" height="${GAME_HEIGHT}"></canvas>
+                    <div class="flex space-x-2 w-full">
+                        <input type="text" id="game2Input" class="flex-grow p-3 text-xl border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-green-500 uppercase font-semibold shadow-md" placeholder="여기에 단어를 입력하세요" onkeyup="if(event.key==='Enter') submitGame2Answer()">
+                        <button onclick="submitGame2Answer()" class="px-4 py-2 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition shadow-md">
+                            제출
+                        </button>
+                    </div>
+                    <button id="startGame2Btn" onclick="startGame2()" class="w-full px-6 py-3 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 transition shadow-lg">
+                        게임 시작
+                    </button>
+                    <p class="text-sm text-center text-gray-600">Tip: 아래 입력창에 떨어지는 단어를 빠르게 입력하고 Enter 키를 누르세요.</p>
+                </div>
+            `;
+
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            updateStatus();
+        }
+
+        // 게임 2 시작
+        function startGame2() {
+            if (isGameRunning) return;
+
+            isGameRunning = true;
+            gameScore2 = 0;
+            wordsMissed = 0;
+            wordsTyped = 0;
+            fallingWords = [];
+            lastSpawnTime = performance.now();
+            
+            document.getElementById('startGame2Btn').disabled = true;
+            document.getElementById('game2Input').focus();
+
+            // 캔버스 크기 조정 (반응형 대응)
+            resizeCanvas(); 
+            window.addEventListener('resize', resizeCanvas);
+
+            // 게임 루프 시작
+            gameLoopId = requestAnimationFrame(animateGame2);
+        }
+        
+        // 캔버스 크기 조정
+        function resizeCanvas() {
+             // 캔버스 부모 요소의 너비에 맞춤 (최대 GAME_WIDTH)
+            const parentWidth = canvas.parentElement.clientWidth;
+            const newWidth = Math.min(parentWidth, GAME_WIDTH);
+            const scale = newWidth / GAME_WIDTH;
+            
+            canvas.style.width = `${newWidth}px`;
+            canvas.style.height = `${GAME_HEIGHT * scale}px`;
+            
+            // 실제 캔버스 해상도는 유지
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+        }
+
+        // 단어 생성
+        function spawnWord() {
+            if (words.length === 0) return;
+            // 무작위로 단어 선택
+            const wordData = words[Math.floor(Math.random() * words.length)];
+            const englishWord = wordData.english;
+
+            // 텍스트 길이와 폰트 크기를 고려하여 X 위치 결정
+            ctx.font = '24px Inter, sans-serif';
+            const textWidth = ctx.measureText(englishWord.toUpperCase()).width;
+            
+            const x = Math.random() * (GAME_WIDTH - textWidth - 40) + 20; // 20px 패딩
+            
+            // 색상 무작위 선택
+            const colors = ['#fde047', '#34d399', '#f87171', '#60a5fa', '#a78bfa']; // Yellow, Green, Red, Blue, Purple
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // 속도 무작위 선택 (느린 단어 ~ 빠른 단어)
+            const speed = Math.random() * 0.5 + 0.5; // 0.5 to 1.0
+
+            fallingWords.push({
+                word: englishWord.toUpperCase(),
+                english: englishWord.toLowerCase(),
+                korean: wordData.korean,
+                x: x,
+                y: 0,
+                speed: speed,
+                color: color,
+            });
+        }
+
+        // 게임 루프
+        function animateGame2(timestamp) {
+            if (!isGameRunning) return;
+
+            // 1. 화면 지우기
+            ctx.fillStyle = '#1f2937'; // Dark background
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // 2. 단어 생성 타이머
+            if (timestamp - lastSpawnTime > SPAWN_INTERVAL_MS) {
+                spawnWord();
+                lastSpawnTime = timestamp;
+            }
+
+            // 3. 단어 이동 및 충돌 감지
+            for (let i = fallingWords.length - 1; i >= 0; i--) {
+                const word = fallingWords[i];
+                word.y += word.speed;
+
+                // 캔버스 바닥에 닿았을 경우 (놓침)
+                if (word.y > GAME_HEIGHT) {
+                    gameScore2 -= 15; // 감점
+                    wordsMissed++;
+                    fallingWords.splice(i, 1); // 단어 제거
+                    // 놓쳤다는 메시지 잠시 표시
+                    showMessage(`[${word.word}] 놓침! -15점 (뜻: ${word.korean})`, 'red');
+                    updateStatus();
+                }
+
+                // 4. 단어 그리기
+                ctx.fillStyle = word.color;
+                ctx.font = '24px Inter, sans-serif';
+                ctx.fillText(word.word, word.x, word.y);
+            }
+
+            // 5. 점수 및 메시지 그리기
+            drawGameOverlay();
+
+            // 6. 다음 프레임 요청
+            gameLoopId = requestAnimationFrame(animateGame2);
+        }
+
+        // 게임 오버레이 (메시지) 그리기
+        let messageTimer = 0;
+        let currentMessage = '';
+        let messageColor = 'white';
+
+        function showMessage(text, color) {
+            currentMessage = text;
+            messageColor = color;
+            messageTimer = 180; // 약 3초 (60fps 기준)
+        }
+
+        function drawGameOverlay() {
+            // 중앙 메시지
+            if (messageTimer > 0) {
+                ctx.fillStyle = messageColor;
+                ctx.font = '30px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(currentMessage, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+                messageTimer--;
+            }
+        }
+
+        // 게임 2 정답 제출 처리
+        function submitGame2Answer() {
+            const inputElement = document.getElementById('game2Input');
+            const submittedAnswer = inputElement.value.toLowerCase().trim();
+            inputElement.value = ''; // 입력창 비우기
+            
+            if (submittedAnswer === "") return;
+
+            // 떨어지는 단어 배열에서 일치하는 단어 찾기
+            const index = fallingWords.findIndex(word => word.english === submittedAnswer);
+
+            if (index !== -1) {
+                // 정답 처리
+                const hitWord = fallingWords[index];
+                gameScore2 += 10; // 득점
+                wordsTyped++;
+                showMessage(`[${hitWord.word}] 성공! +10점`, 'lime');
+                
+                fallingWords.splice(index, 1); // 단어 제거
+            } else {
+                // 오답 처리
+                gameScore2 -= 5; // 오타 감점
+                showMessage(`오타: '${submittedAnswer.toUpperCase()}'는 없습니다. -5점`, 'orange');
+            }
+
+            updateStatus();
+            inputElement.focus();
+        }
+
+
+        // --- Utility Functions (Custom Modal) ---
+
+        let modalCallback = null;
+
+        function showModal(title, message, callback) {
+            // Word Game 2 중에는 모달을 표시하지 않음 (게임 흐름 방해)
+            if (currentMode === 'wordgame2' && isGameRunning) return;
+
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('resultModal').classList.remove('hidden');
+            modalCallback = callback; 
+        }
+        
+        // 사용자가 모달의 '계속하기' 버튼을 눌렀을 때 호출됨
+        function handleModalContinue() {
+            document.getElementById('resultModal').classList.add('hidden');
+            if (modalCallback) {
+                const nextFunction = modalCallback;
+                modalCallback = null; 
+                nextFunction();
+            }
+        }
+    </script>
+</body>
+</html>
