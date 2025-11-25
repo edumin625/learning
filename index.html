@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>바이브 코딩 학습앱 - 부산대학교 소프트웨어교육원</title>
+    <!-- Tailwind CSS CDN 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter 폰트 설정 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: #f7f9fb; /* 밝은 배경 */
+        }
+        .card-shadow {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card-shadow:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+
+    <div class="container mx-auto px-4 py-12 max-w-6xl">
+
+        <!-- 헤더 및 타이틀 섹션 -->
+        <header class="text-center mb-16">
+            <h1 class="text-5xl md:text-6xl font-extrabold text-gray-900 mb-4 tracking-tight">
+                바이브 코딩 학습앱
+            </h1>
+            <p class="text-xl text-indigo-600 font-semibold">
+                AI와 함께 만드는, 나만을 위한 스마트 학습 도구
+            </p>
+            <div class="mt-6 border-t-4 border-indigo-500 w-24 mx-auto rounded-full"></div>
+        </header>
+
+        <!-- 앱 카드 섹션 -->
+        <section class="grid md:grid-cols-2 gap-8 mb-16">
+            
+            <!-- 영단어 학습앱 카드 -->
+            <a href="https://edumin625.github.io/learning/01/" target="_blank" class="block">
+                <div class="bg-white p-6 md:p-8 rounded-2xl card-shadow border border-gray-100 h-full">
+                    <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-3">
+                        영단어 학습앱
+                    </h2>
+                    <p class="text-gray-600 mb-4">
+                        반복 학습에 최적화된 인터페이스로, 나만의 단어장을 만들고 효율적으로 암기할 수 있게 도와줍니다. 모르는 단어만 쏙쏙 골라 복습해보세요.
+                    </p>
+                    <span class="inline-flex items-center text-indigo-500 font-medium hover:text-indigo-700 transition duration-150">
+                        앱 바로가기 
+                        <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </span>
+                </div>
+            </a>
+            
+            <!-- 학습 타이머앱 카드 -->
+            <a href="https://script.google.com/macros/s/AKfycbzn115PVAIKKfxsNbDzibEfnMntqmRuoNKDRvQ4U2T5b6meXENiOnF35gVUAW6D23M4/exec" target="_blank" class="block">
+                <div class="bg-white p-6 md:p-8 rounded-2xl card-shadow border border-gray-100 h-full">
+                    <div class="flex items-center justify-center w-16 h-16 bg-teal-100 rounded-full mb-6">
+                        <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-3">
+                        학습 타이머앱
+                    </h2>
+                    <p class="text-gray-600 mb-4">
+                        집중 시간과 휴식 시간을 설정하여 학습 효율을 극대화하세요. 시간을 명확히 기록하고 관리하여 최적의 학습 리듬을 찾을 수 있습니다.
+                    </p>
+                    <span class="inline-flex items-center text-indigo-500 font-medium hover:text-indigo-700 transition duration-150">
+                        앱 바로가기
+                        <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </span>
+                </div>
+            </a>
+        </section>
+
+        <!-- 작성자 소감 섹션 -->
+        <section class="bg-indigo-700 text-white p-8 md:p-12 rounded-2xl shadow-xl">
+            <h2 class="text-3xl font-bold mb-6 text-center">
+                작성자의 소감
+            </h2>
+            <div class="italic text-lg leading-relaxed mb-6 bg-indigo-800/50 p-6 rounded-xl">
+                "처음에 '코딩으로 앱을 만든다'고 했을 때는 솔직히 막막했다. 프로그래밍 언어도 잘 모르고, 복잡한 코드를 외워야 한다고 생각하니 부담스러웠다. 하지만 바이브코딩은 완전히 달랐다.
+                내가 원하는 기능을 AI에게 설명만 하면 코드가 나오고, 바로 실행해볼 수 있다는 게 신기했다."
+            </div>
+            <p class="text-right font-semibold text-xl pt-4 border-t border-indigo-500">
+                — 부산대학교 소프트웨어교육원 김경민
+            </p>
+        </section>
+
+        <!-- 푸터 -->
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>&copy; 2025 Vibe Coding. All rights reserved.</p>
+        </footer>
+    </div>
+
+</body>
+</html>
